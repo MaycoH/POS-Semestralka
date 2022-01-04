@@ -1,0 +1,13 @@
+//
+// Created by hudec on 2. 1. 2022.
+//
+
+#ifndef SEMESTRALKA_LIMITS_H
+#define SEMESTRALKA_LIMITS_H
+
+#define MAX_USERS_COUNT 256
+#define MAX_NICKNAME_LENGTH 20
+#define MAX_PASSWORD_LENGTH 30
+#define MAX_MESSAGE_LENGTH 160
+
+#endif //SEMESTRALKA_LIMITS_H
