@@ -88,6 +88,7 @@ void *clientRoutine(void *data) {
     thrData->threadEnded = true;    // Nastavím vlákno ako skončené, nech sa v MAINe uprace
     close(client->socketID);    // ukončím socket
     printf("Koniec spojenia, idem von\n");
+
 }
 
 void loginUser(int *n, ThreadData *threadData, ClientData *clientData, User **loggedUser) {
