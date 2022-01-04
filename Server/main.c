@@ -106,8 +106,7 @@ int main(int argc, char *argv[]) {
                 }
             }
         }
-        if (connectedClientsCount == 0)
-            run = false;
+
         // Prijatie spojenia od klienta
         cli_len = sizeof(cli_addr);
         newsockfd = accept(sockfd, (struct sockaddr*)&cli_addr, &cli_len);  //  Počkáme na a príjmeme spojenie od klienta.
@@ -151,7 +150,6 @@ int main(int argc, char *argv[]) {
         // Vytvorenie samotného vlákna
         printf("Vytváram a obsluhujem vlákno %lu\n", thrData->threadID);
         pthread_create(&thread, NULL, &clientRoutine, thrData);
-
     }
 
     // Zrušenie vytvorených mutexov

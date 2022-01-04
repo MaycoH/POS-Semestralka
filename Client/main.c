@@ -123,7 +123,7 @@ int main(int argc, char *argv[]) {
             printf("Menu:\n");
             printf("\t1. Pridať priateľa\n");
             printf("\t2. Odstrániť priateľa\n");
-            printf("\t3. Poslať správu priateľovi\n");
+            printf("\t3. Zobraziť správy/Poslať správu priateľovi\n");
             printf("\t4. Zrušiť účet\n");
             printf("\t5. Odhlásiť sa\n");
 
