@@ -15,13 +15,13 @@ typedef struct {
 } Message;
 
 typedef struct {
-    char *nickname;             // Dvaja s rovnakym nickom nemozu byt v chate
+    char *nickname;
     char *password;
-    char **friends;       // Nick je unikatny, mame len 1 zoznam registrovanych
+    char **friends;
     int friendsCount;
     char **addFriendRequest;
     int addFriendRequestCount;
-    char **deleteFriendRequest;     // O zrusenie priatelstva
+    char **deleteFriendRequest;
     int deleteFriendRequestCount;
     int socketNr;
     int messagesCount;
@@ -29,17 +29,11 @@ typedef struct {
 } User;
 
 typedef struct {
-    char *buffer;
-    char *nickname; // temp
-    char *password; // temp
-    char *messageFrom;
-    char *messageTo;
+    char *nickname; // dočasná premenná
+    char *password; // dočasná premenná
     int status;
-    char *option;
-    char *messsage; // Navratova sprava pouzivatelovi
-    char *userMessage;
     int socketID;
-    int index;
+    int clientID;
     User **registeredUsers;
     User **loggedInUsers;
 } ClientData;
@@ -47,7 +41,7 @@ typedef struct {
 typedef struct {
     unsigned long threadID;
     bool threadEnded;
-    ClientData* my_client;
+    ClientData* clientData;
     pthread_mutex_t *mutexRegister;
     pthread_mutex_t *mutexLogin;
     pthread_mutex_t *mutexAddFriendRequest;
@@ -55,28 +49,81 @@ typedef struct {
     pthread_mutex_t *mutexMessages;
 } ThreadData;
 
+/**
+ * Funkcia pre vyhľadanie užívateľa v zozname užívateľov
+ * @param nickName hľadaný nick
+ * @param usersList zoznam, v ktorom sa má hľadať konkrétny užívateľ
+ * @return užívateľa ak bol nájdený, ináč NULL
+ */
 void *findUser(char *nickName, User **usersList);
-void *isUserLoggedIn(char *nickName, User **usersList);
 
 /** Funkcia pre obsluhu klientov prihlásených do aplikácie
  * @param data Dáta, s ktorými má vlákno pracovať
  */
-void *obsluzKlienta(void *data);
+void *clientRoutine(void *data);
 
-// Privátne pomocné metódy pre metódu "obsluzKlienta"
+
+
+// Privátne pomocné metódy pre metódu "clientRoutine"
+/**
+ * Funkcia pre prihlásenie užívateľa
+ * @param n premenná, v ktorej sa uchovávajú stavy funkcií Read a Write pri komunikácii
+ * @param threadData dáta vlákna
+ * @param clientData dáta klienta
+ * @param loggedUser prihlasovaný užívateľ (odkaz na objekt užívateľa, do ktorého sa majú uložiť info po prihlásení)
+ */
 void loginUser(int *n, ThreadData *threadData, ClientData *clientData, User **loggedUser);
+
+/**
+ * Funkcia pre registráciu nového užívateľa
+ * @param n premenná, v ktorej sa uchovávajú stavy funkcií Read a Write pri komunikácii
+ * @param threadData dáta vlákna
+ * @param clientData dáta klienta
+ */
 void registerUser(int *n, ThreadData *threadData, ClientData *clientData);
+
+/**
+ * Funkcia pre odhlásenie prihláseného užívateľa
+ * @param n premenná, v ktorej sa uchovávajú stavy funkcií Read a Write pri komunikácii
+ * @param threadData dáta vlákna
+ * @param clientData dáta klienta
+ * @param loggedUser prihlásený užívateľ
+ */
 void logoutUser(int *n, ThreadData *threadData, ClientData *clientData, User *loggedUser);
+
+/**
+ * Funkcia pre zmazanie prihláseného užívateľa
+ * @param n premenná, v ktorej sa uchovávajú stavy funkcií Read a Write pri komunikácii
+ * @param threadData dáta vlákna
+ * @param clientData dáta klienta
+ * @param loggedUser prihlásený užívateľ
+ */
 void deleteUser(int *n, ThreadData *threadData, ClientData *clientData, User *loggedUser);
+
+/**
+ * Funkcia pre pridanie priateľa
+ * @param n premenná, v ktorej sa uchovávajú stavy funkcií Read a Write pri komunikácii
+ * @param threadData dáta vlákna
+ * @param clientData dáta klienta
+ * @param loggedUser prihlásený užívateľ */
 void addFriend(int *n, ThreadData *threadData, ClientData *clientData, User *loggedUser);
+
+/**
+ * Funkcia pre zrušenie priateľstva
+ * @param n premenná, v ktorej sa uchovávajú stavy funkcií Read a Write pri komunikácii
+ * @param threadData dáta vlákna
+ * @param clientData dáta klienta
+ * @param loggedUser prihlásený užívateľ
+ */
 void cancelFriend(int *n, ThreadData *threadData, ClientData *clientData, User *loggedUser);
+
+/**
+ * Funkcia pre správu správ prihláseného užívateľa
+ * @param n premenná, v ktorej sa uchovávajú stavy funkcií Read a Write pri komunikácii
+ * @param threadData dáta vlákna
+ * @param clientData dáta klienta
+ * @param loggedUser prihlásený užívateľ
+ */
 void messages(int *n, ThreadData *threadData, ClientData *clientData, User *loggedUser);
-
-
-
-//class users{
-//
-//};
-
 
 #endif //SEMESTRALKA_USERS_H

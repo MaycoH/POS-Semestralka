@@ -14,23 +14,14 @@ void *findUser(char *nickName, User **usersList) {
     return NULL;
 }
 
-void *isUserLoggedIn(char *nickName, User **usersList) {
-    for (int i = 0; i < loggedInCount; ++i) {
-        if (strcmp(nickName, usersList[i]->nickname) == 0) {    // Ak hľadaný nick existuje niekde v zozname užívateľov, tak ho vráť, ináč vráť NULL.
-            return usersList[i];
-        }
-    }
-    return NULL;
-}
-
-void *obsluzKlienta(void *data) {
+void *clientRoutine(void *data) {
     int n;
     bool ended = false;
     char buffer[256];
     char message[256];
     User *loggedUser;
     ThreadData *thrData = data;
-    ClientData *client = thrData->my_client;
+    ClientData *client = thrData->clientData;
     while (!ended) {
         // AK všetko prebehlo bezproblémovo, môžeme začať s klientom komunikovať
         n = 0;

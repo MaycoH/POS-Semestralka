@@ -14,7 +14,7 @@
 
 bool run = false;
 int threadsCount = 0;
-int loggedInCount = 0;
+int connectedClientsCount = 0;
 
 
 int main(int argc, char *argv[]) {
@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
     User **registeredUsers = malloc(sizeof (User*) * MAX_USERS_COUNT);
     User **loggedInUsers = malloc(sizeof (User*) * MAX_USERS_COUNT);
     ThreadData **threads = (ThreadData**) malloc(sizeof (ThreadData*) * MAX_USERS_COUNT);
-    ClientData **loggedInClients = malloc(sizeof (ClientData*) * MAX_USERS_COUNT);
+    ClientData **connectedClients = malloc(sizeof (ClientData*) * MAX_USERS_COUNT);
 
     // Príprava mutexov
     pthread_mutex_t mutexRegister;
@@ -76,7 +76,6 @@ int main(int argc, char *argv[]) {
     run = true;
 
     while (run) {
-//        printf("Som vo While cykle, počet vlákien: %d\n", threadsCount);
         // kontrola vlákien - upratanie
         for (int i = 0; i < threadsCount; ++i) {
             ThreadData *thrData = threads[i];
@@ -84,16 +83,16 @@ int main(int argc, char *argv[]) {
             if (thrData != NULL) {
                 if (thrData->threadEnded) {
                     printf("Ukončujem vlákno %d/%d\n", i+1, threadsCount);
-                    if (thrData->my_client->nickname == 0) {
-                        free(thrData->my_client->nickname);
-                        free(thrData->my_client->password);
+                    if (thrData->clientData->nickname == 0) {
+                        free(thrData->clientData->nickname);
+                        free(thrData->clientData->password);
                     }
                     pthread_mutex_lock(&mutexFriendsCount);
-                    loggedInCount--;
-                    loggedInClients[thrData->my_client->index] = loggedInClients[loggedInCount];
-                    loggedInClients[loggedInCount] = NULL;
+                    connectedClientsCount--;
+                    connectedClients[thrData->clientData->clientID] = connectedClients[connectedClientsCount];
+                    connectedClients[connectedClientsCount] = NULL;
                     pthread_mutex_unlock(&mutexFriendsCount);
-                    free(thrData->my_client);
+                    free(thrData->clientData);
                     pthread_mutex_lock(&mutexThreads);
                     unsigned long threadID = thrData->threadID;       // Pre výpis uvoľňovaného ID vlákna
                     threads[i] = threads[threadsCount];
@@ -107,6 +106,8 @@ int main(int argc, char *argv[]) {
                 }
             }
         }
+        if (connectedClientsCount == 0)
+            run = false;
         // Prijatie spojenia od klienta
         cli_len = sizeof(cli_addr);
         newsockfd = accept(sockfd, (struct sockaddr*)&cli_addr, &cli_len);  //  Počkáme na a príjmeme spojenie od klienta.
@@ -124,10 +125,10 @@ int main(int argc, char *argv[]) {
         cliData->registeredUsers = registeredUsers;
         cliData->loggedInUsers = loggedInUsers;
         cliData->status = false;
-        cliData->index = loggedInCount;
+        cliData->clientID = connectedClientsCount;
         // Pridanie klienta do zoznamu prihlásených klientov
         pthread_mutex_lock(&mutexFriendsCount);
-        loggedInClients[loggedInCount++] = cliData;   // vložím a až potom incrementnem
+        connectedClients[connectedClientsCount++] = cliData;   // vložím a až potom incrementnem
         pthread_mutex_unlock(&mutexFriendsCount);
 
         // Príprava vlákna pre klienta
@@ -135,7 +136,7 @@ int main(int argc, char *argv[]) {
         ThreadData *thrData = malloc(sizeof (ThreadData));
         thrData->threadID = thread;
         thrData->threadEnded = false;
-        thrData->my_client = cliData;
+        thrData->clientData = cliData;
         // Príprava mutexov pre klienta
         thrData->mutexRegister = &mutexRegister;
         thrData->mutexLogin = &mutexLogin;
@@ -149,13 +150,11 @@ int main(int argc, char *argv[]) {
 
         // Vytvorenie samotného vlákna
         printf("Vytváram a obsluhujem vlákno %d\n", thrData->threadID);
-        pthread_create(&thread, NULL, &obsluzKlienta, thrData);
-        printf("Skončil som obsluhu vlákna %d\n", thrData->threadID);
+        pthread_create(&thread, NULL, &clientRoutine, thrData);
 
     }
 
     // Zrušenie vytvorených mutexov
-    printf("SOm tu niekedy?\n");
     pthread_mutex_destroy(&mutexRegister);
     pthread_mutex_destroy(&mutexLogin);
     pthread_mutex_destroy(&mutexAddFriendRequests);
