@@ -22,7 +22,6 @@ bool showRequests(int sockfd) {
     char *requests;
     requests = strtok(message, ": ");
     if (strcmp(requests, "Žiadosti") == 0) {
-//        int requestsCount = strtol(message, NULL, 10);
         int requestsCount = strtol(strtok(NULL, ": "), NULL, 10);
         printf("Počet žiadostí: %d\n", requestsCount);
         for (int i = 0; i < requestsCount; ++i) {
@@ -37,11 +36,7 @@ bool showRequests(int sockfd) {
 
             printf("Chcete potvrdiť túto žiadosť? [Y/N]: ");
             char response[1];
-//            do {
-//                fflush(stdin);
             scanf("%*c%c", response);
-//            } while (strcasecmp(response, "Y") != 0 || strcasecmp(response, "N") != 0);
-//            bzero(message, 256);
             n = write(sockfd, response, strlen(response)+1);
             if (n < 0)
             {
@@ -61,10 +56,8 @@ bool loginUser(int sockfd) {
     char password[MAX_PASSWORD_LENGTH];
     printf("Zadajte prihlasovacie meno (max. %d znakov): ", MAX_NICKNAME_LENGTH);
     scanf("%s", login);
-//    fgets(login, MAX_NICKNAME_LENGTH, stdin);
     printf("Zadajte heslo (max. %d znakov): ", MAX_PASSWORD_LENGTH);
     scanf("%s", password);
-//    fgets(password, MAX_PASSWORD_LENGTH, stdin);
 
     // Príprava a poslanie prihlasovacích údajov na server
     char message[256];
@@ -89,7 +82,6 @@ bool loginUser(int sockfd) {
         strcpy(loggedUser, login);
         printf(GREEN"Prihlásenie úspešné"RESET", prihlásený užívateľ: %s.\n", login);
         return showRequests(sockfd);
-//        return true;
     } else {
         printf(RED"Prihlásenie neúspešné - nesprávne meno alebo heslo.\n"RESET);
         return false;
@@ -101,10 +93,8 @@ bool registerUser(int sockfd) {
     char password[MAX_PASSWORD_LENGTH];
     printf("Zadajte prihlasovacie meno (max. %d znakov): ", MAX_NICKNAME_LENGTH);
     scanf("%s", login);
-//    fgets(login, MAX_NICKNAME_LENGTH, stdin);
     printf("Zadajte heslo (max. %d znakov): ", MAX_PASSWORD_LENGTH);
     scanf("%s", password);
-//    fgets(password, MAX_PASSWORD_LENGTH, stdin);
 
 
     // Príprava a poslanie prihlasovacích údajov na server
@@ -176,11 +166,8 @@ bool addFriend(int sockfd, FriendList *friendslist) {
         // Potvrdenie žiadosti
         char temp;
         char option[256];
-//        fflush(stdin);
-//        fgets(option, 2, stdin);
         scanf("%*c%c", &temp);
         sprintf(option,"%c", temp);
-//        *option = temp[0];
         printf("Sent: %s\n", option);
         n = write(sockfd, option, strlen(option)+1);
         if (n < 0)
@@ -338,7 +325,6 @@ bool sendMessage(int sockfd, FriendList *friendsList) {
     bzero(message, 256);
     n = read(sockfd, message, 255);
     printf("*** Prijatá správa: %s\n", message);
-//    sleep(5);
     strtok(message, ":");
     char *count = strtok(NULL, ":");
     int messagesCount = strtol(count, NULL, 10);
@@ -422,7 +408,6 @@ bool deleteFriend(int sockfd, FriendList *friendsList) {
         printf("Užívateľ %s Vás žiada zrušenie priateľstva, chcete ho zrušiť? [Y/N]: ", message);
         // Potvrdenie žiadosti
         char option[1];
-//        fgets(option, 2, stdin);
         fflush(stdin);
         scanf("%s", option);
         n = write(sockfd, option, strlen(option)+1);
@@ -441,7 +426,6 @@ bool deleteFriend(int sockfd, FriendList *friendsList) {
                     friendsList->friends[friendsList->friendsCount - 1] = tempUser;
                     friendsList->friends[friendsList->friendsCount - 1] = NULL;
                     free(friendsList->friends[friendsList->friendsCount - 1]);
-//                    strcpy(friendsList->friends[friendsList->friendsCount], message);
                     friendsList->friendsCount--;
                     printf("Úspešne odstránený lokálne\n");
                     break;

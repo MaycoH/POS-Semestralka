@@ -2,9 +2,6 @@
 // Created by hudec on 1. 1. 2022.
 //
 
-//#include <sys/socket.h>
-//#include <netinet/in.h>
-//#include <stdlib.h>
 #include <netdb.h>
 #include <string.h>
 #include <unistd.h>
@@ -95,7 +92,6 @@ int main(int argc, char *argv[]) {
             while (optionInt < 1 || optionInt > 3) {
                 printf("Zadajte možnosť: ");
 
-//                scanf("%c", option);
                 fgets(option, 2, stdin);
                 fflush(stdin);
                 optionInt = strtol(option, NULL, 10);
@@ -135,7 +131,6 @@ int main(int argc, char *argv[]) {
                 printf("Zadajte možnosť: ");
 
                 fflush(stdin);
-//                scanf(" %c", option);
                 fgets(option, 2, stdin);
                 fflush(stdin);
                 optionInt = strtol(option, NULL, 10);

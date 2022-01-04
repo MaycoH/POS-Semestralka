@@ -149,7 +149,7 @@ int main(int argc, char *argv[]) {
         pthread_mutex_unlock(&mutexThreads);
 
         // Vytvorenie samotného vlákna
-        printf("Vytváram a obsluhujem vlákno %d\n", thrData->threadID);
+        printf("Vytváram a obsluhujem vlákno %lu\n", thrData->threadID);
         pthread_create(&thread, NULL, &clientRoutine, thrData);
 
     }
