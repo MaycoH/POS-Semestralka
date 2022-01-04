@@ -4,7 +4,7 @@ all: server client
 
 server: Server/main.c
 	@echo "Building ServerApp"
-	gcc -o ServerApp Server/main.c Server/users.c -pthread
+	gcc -o ServerApp Server/main.c Server/users.c -pthread -I.
 	@echo "Building ServerApp Done"
 .PHONY : server		# Pri rovnakom názve súboru ako volaná funkcia make zabráni použitiu názvu súboru => nevykonaného make
 

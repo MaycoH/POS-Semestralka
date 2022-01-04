@@ -9,7 +9,7 @@ char loggedUser[MAX_NICKNAME_LENGTH];
 
 bool showRequests(int sockfd) {
     // Zobrazenie žiadostí
-    char message[255];
+    char message[256];
     int n;
     bzero(message, 256);
     n = read(sockfd, message, 255);
@@ -351,12 +351,12 @@ bool sendMessage(int sockfd, FriendList *friendsList) {
     if (strcasecmp(receiver, "SHOW") == 0) {
         printf("Žiadam o zoznam priateľov\n");
         n = write(sockfd, receiver, strlen(receiver)+1);
-        bzero(receiver, 256);
+        bzero(receiver, MAX_NICKNAME_LENGTH);
         n = read(sockfd, receiver, MAX_MESSAGE_LENGTH + 1);
         int friendsCount = strtol(receiver, NULL, 10);
         if (friendsCount > 0) {
             for (int i = 0; i < friendsCount; ++i) {
-                bzero(receiver, 256);
+                bzero(receiver, MAX_NICKNAME_LENGTH);
                 n = read(sockfd, receiver, MAX_MESSAGE_LENGTH + 1);
                 printf("Nick: %s\n", receiver);
             }
