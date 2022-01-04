@@ -31,7 +31,7 @@ void *clientRoutine(void *data) {
         if (n < 0)
         {
             perror(RED"*** Error reading from socket"RESET);
-            return 4;
+            return (void *) 4;
         }
 
         char *options = "Možnosti: Login (L), Registrácia (R), Odhlásenie(O), zmazanie užívateľa (D), pridanie priateľa (A), zrušenie priateľa (?), zobrazenie správy (M)\n";
@@ -88,6 +88,7 @@ void *clientRoutine(void *data) {
     thrData->threadEnded = true;    // Nastavím vlákno ako skončené, nech sa v MAINe uprace
     close(client->socketID);    // ukončím socket
     printf("Koniec spojenia, idem von\n");
+
 }
 
 void loginUser(int *n, ThreadData *threadData, ClientData *clientData, User **loggedUser) {

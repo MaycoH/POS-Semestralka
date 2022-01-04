@@ -30,5 +30,8 @@ int test() {
 
 
         requested->addFriendRequest[requested->addFriendRequestCount];
+
+
+        threadsCount && mutexThreads, connectedClientsCOunt
     }
 }

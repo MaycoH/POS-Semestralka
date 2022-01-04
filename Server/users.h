@@ -18,14 +18,14 @@ typedef struct {
     char *nickname;
     char *password;
     char **friends;
-    int friendsCount;
     char **addFriendRequest;
-    int addFriendRequestCount;
     char **deleteFriendRequest;
+    int friendsCount;
+    int addFriendRequestCount;
     int deleteFriendRequestCount;
-    int socketNr;
-    int messagesCount;
     Message **messages;
+    int messagesCount;
+    int socketNr;
 } User;
 
 typedef struct {
