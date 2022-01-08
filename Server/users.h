@@ -1,3 +1,4 @@
+#pragma once
 #ifndef SEMESTRALKA_USERS_H
 #define SEMESTRALKA_USERS_H
 
@@ -6,7 +7,16 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <malloc.h>
 #include "../maxLimits.h"
+#include "../colors.h"
+
+extern int registeredCount;
+extern bool run;
+extern int threadsCount;
+extern int connectedClientsCount;
+extern pthread_mutex_t mutexThreads;
+extern pthread_mutex_t mutexClients;
 
 /** Štruktúra obsahujúca odosielateľa a správu */
 typedef struct {
@@ -37,6 +47,7 @@ typedef struct {
     User **registeredUsers;
     User **loggedInUsers;
 } ClientData;
+extern ClientData **connectedClients;
 
 typedef struct {
     unsigned long threadID;
@@ -47,6 +58,7 @@ typedef struct {
     pthread_mutex_t *mutexAddFriendRequest;
     pthread_mutex_t *mutexDeleteFriendRequest;
     pthread_mutex_t *mutexMessages;
+    int threadsCount;
 } ThreadData;
 
 /**

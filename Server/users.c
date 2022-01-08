@@ -1,10 +1,8 @@
-#include <malloc.h>
 #include "users.h"
 #include "../colors.h"
 
 int registeredCount = 0;
 int loggedInCount = 0;
-
 void *findUser(char *nickName, User **usersList) {
     for (int i = 0; i < registeredCount; ++i) {
         if (strcmp(nickName, usersList[i]->nickname) == 0) {    // Ak hľadaný nick existuje niekde v zozname užívateľov, tak ho vráť, ináč vráť NULL.
@@ -22,11 +20,11 @@ void *clientRoutine(void *data) {
     User *loggedUser;
     ThreadData *thrData = data;
     ClientData *client = thrData->clientData;
+    printf("Vytvorené vlákna: %d; id vlákna: %lu\n", threadsCount, thrData->threadID);
     while (!ended) {
         // AK všetko prebehlo bezproblémovo, môžeme začať s klientom komunikovať
         n = 0;
         bzero(buffer, 256); // Vyčistenie bufferu
-
         n = read(client->socketID, buffer, 255);   //  Načítame správu od klienta cez socketID do buffra.
         if (n < 0)
         {
@@ -84,29 +82,50 @@ void *clientRoutine(void *data) {
         }
     }
 
-    // Ukončenie spojenia s klientom
     thrData->threadEnded = true;    // Nastavím vlákno ako skončené, nech sa v MAINe uprace
     close(client->socketID);    // ukončím socket
     printf("Koniec spojenia, idem von\n");
+int sid = client->socketID;
+    // Ukončenie spojenia s klientom
+    printf("***test Ukončujem vlákno %d/%d\n", 1, threadsCount);
+    pthread_mutex_lock(&mutexClients);
+    connectedClientsCount--;
+    connectedClients[thrData->clientData->clientID] = connectedClients[connectedClientsCount];
+    connectedClients[connectedClientsCount] = NULL;
+    pthread_mutex_unlock(&mutexClients);
+//    free(thrData->clientData);
 
+    pthread_mutex_lock(&mutexThreads);
+    unsigned long threadID = thrData->threadID;       // Pre výpis uvoľňovaného ID vlákna
+    // Uvoľnenie vlákna a upravanie pamäte
+    free(thrData->clientData);
+    free(thrData);
+    printf("Znižujem počet vlákien\n");
+    threadsCount--;
+    pthread_mutex_unlock(&mutexThreads);
+
+    printf(GREEN " *** TEST Vlákno %lu uvoľnené. Počet vlákien: %d\n" RESET, threadID, threadsCount);
+    if (connectedClientsCount == 0) run = false;
+
+    printf("Detachujem vlákno: %lu\n", threadID);
+    pthread_detach(threadID);
 }
 
 void loginUser(int *n, ThreadData *threadData, ClientData *clientData, User **loggedUser) {
     char buffer[256];
     char message[256];
-    clientData->nickname = strtok(NULL, "|");
-    clientData->password = strtok(NULL, "|");
-
+    char *login = strtok(NULL, "|");
+    char *password = strtok(NULL, "|");
     printf(YELLOW "*** Prihlasujem užívateľa \"%s\n" RESET, clientData->nickname);
     clientData->status = 0;
     bool found = false;
     bool foundNick = false;
 
     for (int i = 0; i < registeredCount; ++i) {     // Postupne prechádzam cez všetkých užívateľov a potovnávam ich mená a heslá
-        if (strcmp(clientData->nickname, clientData->registeredUsers[i]->nickname) == 0) {      // Meno je OK
+        if (strcmp(login, clientData->registeredUsers[i]->nickname) == 0) {      // Meno je OK
             printf(GREEN "\t*** NickName je OK\n" RESET);
             foundNick = true;
-            if (strcmp(clientData->password, clientData->registeredUsers[i]->password) == 0) {  // aj heslo je OK
+            if (strcmp(password, clientData->registeredUsers[i]->password) == 0) {  // aj heslo je OK
                 printf(GREEN "\t*** Heslo je OK\n" RESET);
 
                 // Samotné prihlásenie
@@ -155,8 +174,7 @@ void loginUser(int *n, ThreadData *threadData, ClientData *clientData, User **lo
             requestingFriend = (*loggedUser)->addFriendRequest[i];  // Vytiahnem si meno žiadajúceho priateľa
             pthread_mutex_unlock(threadData->mutexAddFriendRequest);
             // Poslanie žiadosti
-            strcpy(message, "Máte žiadosť o priateľstvo od užívateľa ");
-            strcat(message, requestingFriend);      // Append mena
+            sprintf(message, "%s", requestingFriend);
             *n = write(clientData->socketID, message, strlen(message)+1);       //  Pošleme odpoveď klientovi.
             printf("Poslaná žiadosť o priateľstvo užívateľovi %s od užívateľa %s, čakám na potvrdenie.\n", (*loggedUser)->nickname, requestingFriend);;
             // Prijatie odpovede
@@ -179,6 +197,11 @@ void loginUser(int *n, ThreadData *threadData, ClientData *clientData, User **lo
                 strcpy(requestingUser->friends[requestingUser->friendsCount], (*loggedUser)->nickname);     // Pridanie užívateľa na koniec jeho zoznamu
                 requestingUser->friendsCount++;
                 pthread_mutex_unlock(threadData->mutexLogin);
+
+                sprintf(message, "Užívateľ úspešne pridaný");
+                printf("Užívateľ %s úspešne pridaný do zoznamu priateľov užívateľa %s. Počet priateľov: %d\n", requestingUser->nickname, (*loggedUser)->nickname, (*loggedUser)->friendsCount);
+                *n = write(clientData->socketID, message, strlen(message)+1);
+                usleep(200000);
             }
         }
     } else {        // Neúspešné prihlásenie
@@ -213,31 +236,28 @@ void registerUser(int *n, ThreadData *threadData, ClientData *clientData) {
 
     // Samotná registrácia užívateľa
     if (clientData->status == 1) {
-        User *newUser = malloc(sizeof (User));      // Vyhradenie pamäte pre užívateľa
-
-        newUser->nickname = malloc(sizeof(char) * MAX_NICKNAME_LENGTH);     // Alokácia pamäte pre reťazec + vyplnenie reťazca
-        strcpy(newUser->nickname, clientData->nickname);
-        newUser->password = malloc(sizeof(char) * MAX_PASSWORD_LENGTH);
-        strcpy(newUser->password, clientData->password);
-
-        newUser->friends = malloc(sizeof(char*) * MAX_USERS_COUNT - 1);     // Veľkosť smerníka char * počet všetkých užívateľov - práve reg. užívateľ
-        newUser->friendsCount = 0;
-        newUser->addFriendRequest = malloc(sizeof(char*) * MAX_USERS_COUNT - 1);
-        newUser->addFriendRequestCount = 0;
-        newUser->deleteFriendRequest = malloc(sizeof(char*) * MAX_USERS_COUNT - 1);
-        newUser->deleteFriendRequestCount = 0;
-
-        newUser->messages = malloc(sizeof(Message *) * MAX_USERS_COUNT);
-        newUser->messagesCount = 0;
-
-        // Pridelenie socketu užívateľovi
-        newUser->socketNr = clientData->socketID;
-
         // Pridanie užívateľa do zoznamu registrovaných užívateľov
         pthread_mutex_lock(threadData->mutexRegister);
-        clientData->registeredUsers[registeredCount++] = newUser;
+        clientData->registeredUsers[registeredCount] = malloc(sizeof (User));
+
+        clientData->registeredUsers[registeredCount]->nickname = malloc(sizeof(char) * MAX_NICKNAME_LENGTH);
+        strcpy(clientData->registeredUsers[registeredCount]->nickname, clientData->nickname);
+        clientData->registeredUsers[registeredCount]->password = malloc(sizeof(char) * MAX_PASSWORD_LENGTH);
+        strcpy(clientData->registeredUsers[registeredCount]->password, clientData->password);
+        clientData->registeredUsers[registeredCount]->friends = malloc(sizeof(char*) * MAX_USERS_COUNT - 1);
+        clientData->registeredUsers[registeredCount]->friendsCount = 0;
+        clientData->registeredUsers[registeredCount]->addFriendRequest = malloc(sizeof(char*) * MAX_USERS_COUNT - 1);
+        clientData->registeredUsers[registeredCount]->addFriendRequestCount = 0;
+        clientData->registeredUsers[registeredCount]->deleteFriendRequest = malloc(sizeof(char*) * MAX_USERS_COUNT - 1);
+        clientData->registeredUsers[registeredCount]->deleteFriendRequestCount = 0;
+        clientData->registeredUsers[registeredCount]->messages = malloc(sizeof(Message *) * MAX_USERS_COUNT);
+        clientData->registeredUsers[registeredCount]->messagesCount = 0;
+        clientData->registeredUsers[registeredCount]->socketNr = clientData->socketID;
+        registeredCount++;
         pthread_mutex_unlock(threadData->mutexRegister);
         strcpy(message, "Registrácia užívateľa úspešná.\n");
+        printf("Login: %s, password: %s\n", clientData->registeredUsers[registeredCount - 1]->nickname, clientData->registeredUsers[registeredCount-1]->password);
+
     }
     else if (clientData->status == 2) {
         strcpy(message, "Užívateľ s daným menom už je zaregistrovaný!\n");
@@ -256,7 +276,7 @@ void logoutUser(int *n, ThreadData *threadData, ClientData *clientData, User *lo
     char message[256];
     clientData->nickname = loggedUser->nickname;
     clientData->status = 0;
-    printf("Odhlasovanie: %s\n", clientData->nickname);
+    printf("Odhlasujem užívateľa: %s... ", clientData->nickname);
 
     pthread_mutex_lock(threadData->mutexLogin);
     for (int i = 0; i < loggedInCount; ++i) {
@@ -287,7 +307,6 @@ void logoutUser(int *n, ThreadData *threadData, ClientData *clientData, User *lo
         perror("Error writing to socket");
 }
 
-// FIXME: Odhlásenie užívateľa bude fungovať s priamym volaním metódy "logoutUser"?
 void deleteUser(int *n, ThreadData *threadData, ClientData *clientData, User *loggedUser) {
     bool logoutSuccess = false;
     char message[256];
@@ -318,19 +337,18 @@ void deleteUser(int *n, ThreadData *threadData, ClientData *clientData, User *lo
         for (int i = 0; i < registeredCount; ++i) {
             if (strcmp(loggedUser->nickname, clientData->registeredUsers[i]->nickname) == 0) {    // Ak je užívateľ registrovaný, zmažem ho
                 // vymením ho s posledným a vynulujem
-                if (i != registeredCount - 1) {
+//                if (i != registeredCount - 1) {
                     User *tempUser = clientData->registeredUsers[i];
                     clientData->registeredUsers[i] = clientData->registeredUsers[registeredCount - 1];
                     clientData->registeredUsers[registeredCount - 1] = tempUser;
-                }
+//                }
                 registeredCount--;
 
                 // Uvoľnenie pamäte
                 free(clientData->registeredUsers[registeredCount]->nickname);
                 free(clientData->registeredUsers[registeredCount]->password);
                 free(clientData->registeredUsers[registeredCount]->friends);
-                free(clientData->registeredUsers[registeredCount]);
-                clientData->registeredUsers[registeredCount] = NULL;
+                pthread_mutex_unlock(threadData->mutexRegister);
 
                 // Upratanie dát
                 pthread_mutex_lock(threadData->mutexMessages);
@@ -358,6 +376,9 @@ void deleteUser(int *n, ThreadData *threadData, ClientData *clientData, User *lo
                 free(loggedUser->deleteFriendRequest);
                 pthread_mutex_unlock(threadData->mutexDeleteFriendRequest);
 
+                pthread_mutex_lock(threadData->mutexRegister);
+                free(clientData->registeredUsers[registeredCount]);
+
                 deleteSuccess = true;
                 break;
             }
@@ -377,7 +398,7 @@ void deleteUser(int *n, ThreadData *threadData, ClientData *clientData, User *lo
 
 void addFriend(int *n, ThreadData *threadData, ClientData *clientData, User *loggedUser) {
     char message[256];    // Vyčistenie pomocného buffera
-    char buffer[256];    // Vyčistenie pomocného buffera
+    char buffer[256];     // Vyčistenie pomocného buffera
     pthread_mutex_lock(threadData->mutexAddFriendRequest);
     sprintf(message, "%d", loggedUser->addFriendRequestCount);
     pthread_mutex_unlock(threadData->mutexAddFriendRequest);
@@ -393,14 +414,11 @@ void addFriend(int *n, ThreadData *threadData, ClientData *clientData, User *log
     int requestsAccepted = 0;
     pthread_mutex_lock(threadData->mutexAddFriendRequest);
     for (int i = 0; i < loggedUser->addFriendRequestCount; ++i) {
-        printf("Iterácia cyklu %d z %d\n", i+1, loggedUser->addFriendRequestCount);
         requestingFriend = loggedUser->addFriendRequest[0];
-        printf("Friend priradený do requestingFriend: %s\n", requestingFriend);
         if (requestingFriend != NULL) {
             pthread_mutex_lock(threadData->mutexRegister);
             User *requestingUser = findUser(requestingFriend, clientData->registeredUsers);
             pthread_mutex_unlock(threadData->mutexRegister);
-            printf("Nájdený user\n");
 
             if (requestingUser != NULL) {
                 // Zaslanie nicku žiadajúceho o priateľstvo klientovi
@@ -418,21 +436,23 @@ void addFriend(int *n, ThreadData *threadData, ClientData *clientData, User *log
                     loggedUser->friendsCount++;
 
                     // Zmazanie žiadosti po úspešnom accepte - najskôr výmena s poslednou, potom zmazanie poslednej
-                    char *tempUser = loggedUser->addFriendRequest[i];
-                    loggedUser->addFriendRequest[i] = loggedUser->addFriendRequest[loggedUser->addFriendRequestCount - 1];
+                    pthread_mutex_lock(threadData->mutexAddFriendRequest);
+                    char *tempUser = loggedUser->addFriendRequest[0];
+                    loggedUser->addFriendRequest[0] = loggedUser->addFriendRequest[loggedUser->addFriendRequestCount - 1];
                     loggedUser->addFriendRequest[loggedUser->addFriendRequestCount - 1] = tempUser;
                     loggedUser->addFriendRequest[loggedUser->addFriendRequestCount - 1] = NULL;
+                    free(loggedUser->addFriendRequest[loggedUser->addFriendRequestCount - 1]);
+                    free(tempUser);
+                    pthread_mutex_unlock(threadData->mutexAddFriendRequest);
+
                     requestsAccepted++;
-                    printf("tempuser: %s\n", tempUser);
-                    printf("logUserAddRequest[%d]: %s\n", i, loggedUser->addFriendRequest[i]);
-                    printf("logUserAddRequest[%d]: %s\n", loggedUser->addFriendRequestCount - 1, loggedUser->addFriendRequest[loggedUser->addFriendRequestCount - 1]);
 
                     // Pridanie užívateľa do priateľov žiadajúceho užívateľa
                     requestingUser->friends[requestingUser->friendsCount] = malloc(sizeof(char) * MAX_NICKNAME_LENGTH);
                     strcpy(requestingUser->friends[requestingUser->friendsCount], loggedUser->nickname);     // Pridanie užívateľa na koniec jeho zoznamu
                     requestingUser->friendsCount++;
                     pthread_mutex_unlock(threadData->mutexLogin);
-                    usleep(200000);
+//                    usleep(200000);
                     sprintf(message, "Užívateľ úspešne pridaný");
                     printf("Užívateľ %s úspešne pridaný do zoznamu priateľov užívateľa %s. Počet priateľov: %d\n", requestingUser->nickname, loggedUser->nickname, loggedUser->friendsCount);
                     *n = write(clientData->socketID, message, strlen(message)+1);           //  Pošleme odpoveď klientovi.
@@ -449,7 +469,7 @@ void addFriend(int *n, ThreadData *threadData, ClientData *clientData, User *log
     usleep(200000);     // sleep aby neposielalo moc rýchlo (a klient ich nezachytil)
 
     bzero(message, 256);
-    pthread_mutex_lock(threadData->mutexRegister);      // Lock mutexu pre prípad (od)registrovania
+    pthread_mutex_lock(threadData->mutexRegister);          // Lock mutexu pre prípad (od)registrovania
     sprintf(message, "%d", registeredCount - 1);        // Počet registrovaných užívateľov - žiadajúci
     pthread_mutex_unlock(threadData->mutexRegister);
     printf("Posielam užívateľovi %s počet užívateľov na pridanie (%s)\n", loggedUser->nickname, message);
@@ -462,7 +482,6 @@ void addFriend(int *n, ThreadData *threadData, ClientData *clientData, User *log
         if (strcmp(loggedUser->nickname, clientData->registeredUsers[i]->nickname) != 0) {      // Aby som neposlal samého seba
             bzero(message, 256);
             sprintf(message, "%s", clientData->registeredUsers[i]->nickname);
-            printf("Posielam nick: %s\n", message);
             *n = write(clientData->socketID, message, strlen(message)+1);       //  Pošleme odpoveď klientovi.
             usleep(200000);     // sleep aby neposielalo moc rýchlo (a klient ich nezachytil)
         }
@@ -483,36 +502,31 @@ void addFriend(int *n, ThreadData *threadData, ClientData *clientData, User *log
     pthread_mutex_unlock(threadData->mutexRegister);
 
     if (requested != NULL) {    // AK som našiel hľadaný nick
-        printf("Nájdený nick: %s\n", requested->nickname);
         bool success = true;
         if (strcmp(requested->nickname, loggedUser->nickname) == 0) {       // Ak sa snažím pridať samého seba
-            printf(RED"Užívateľ %s sa pokúsil pridať samého seba\n"RESET, loggedUser->nickname);
+            printf("Užívateľ %s sa pokúsil pridať samého seba\n", loggedUser->nickname);
             strcpy(message, "Nemôžete si pridať samého seba!\n");
             *n = write(clientData->socketID, message, strlen(message)+1);
             success = false;
         } else {
             // Ak sa snažím pridať užívateľa, ktorého už mám
-            printf("Som v Else vetve\n");
             pthread_mutex_lock(threadData->mutexLogin);
             for (int i = 0; i < loggedUser->friendsCount; ++i) {
-                printf("Iterácia friendsCount:%d/%d\n", i+1, loggedUser->friendsCount);
                 if (strcmp(requested->nickname, loggedUser->friends[i]) == 0) {
                     sprintf(message, "Užívateľa %s už máte v priateľoch.\n", requested->nickname);
                     *n = write(clientData->socketID, message, strlen(message)+1);
-                    printf(RED"Užívateľ %s už má užívateľa %s v priateľoch.\n"RESET, loggedUser->nickname, requested->nickname);
+                    printf("Užívateľ %s už má užívateľa %s v priateľoch.\n", loggedUser->nickname, requested->nickname);
                     success = false;
                     break;
                 }
             }
-            printf("Som v Else vetve po 1. cykle, addFrieneReqCount: %d\n", loggedUser->addFriendRequestCount);
 
             // Ak som danému užívateľovi žiadosť už poslal
             for (int i = 0; i < requested->addFriendRequestCount; ++i) {
-                printf("Iterácia friendsCount:%d/%d\n", i+1, loggedUser->addFriendRequestCount);
                 if (strcmp(loggedUser->nickname, requested->addFriendRequest[i]) == 0) {
                     sprintf(message, "Užívateľovi %s ste už žiadosť poslali.\n", requested->nickname);
                     *n = write(clientData->socketID, message, strlen(message)+1);
-                    printf(RED"Užívateľ %s už poslal žiadosť užívateľovi %s.\n"RESET, loggedUser->nickname, requested->nickname);
+                    printf("Užívateľ %s už poslal žiadosť užívateľovi %s.\n", loggedUser->nickname, requested->nickname);
                     success = false;
                     break;
                 }
@@ -522,13 +536,11 @@ void addFriend(int *n, ThreadData *threadData, ClientData *clientData, User *log
             if(success) {
                 // Ak sa nevyskytla žiadna chyba (priateľa ešte nemám v priateľoch), pošlem mu žiadosť
                 pthread_mutex_lock(threadData->mutexAddFriendRequest);
-                printf("Snažím sa alokovať\n");
                 requested->addFriendRequest[requested->addFriendRequestCount] = malloc(sizeof(char) * MAX_NICKNAME_LENGTH);     // Alokujem mu pristor
-                printf("Snažím sa alokovať SUCCESS\n");
                 strcpy(requested->addFriendRequest[requested->addFriendRequestCount++], loggedUser->nickname);
                 pthread_mutex_unlock(threadData->mutexAddFriendRequest);
-                sprintf(message, "Žiadosť úspešne poslaná\n", requested->nickname);
-                printf(GREEN"%s"RESET, message);
+                sprintf(message, "Žiadosť úspešne poslaná\n");
+                printf(GREEN"Užívateľovi %s %s"RESET, requested->nickname, message);
                 *n = write(clientData->socketID, message, strlen(message)+1);
             }
 
@@ -555,20 +567,16 @@ char message[256];
     int friendsCount = 0;
     pthread_mutex_lock(threadData->mutexDeleteFriendRequest);
     for (int i = 0; i < loggedUser->deleteFriendRequestCount; ++i) {
-        printf("Iterácia cyklu %d z %d\n", i+1, loggedUser->deleteFriendRequestCount);
-        printf("Friend priradený do requestingFriend: %s\n", loggedUser->deleteFriendRequest[0]);
         pthread_mutex_lock(threadData->mutexRegister);
         User *requestingUser = findUser(loggedUser->deleteFriendRequest[0], clientData->registeredUsers);
         pthread_mutex_unlock(threadData->mutexRegister);
-        printf("Friend priradený do requestingUser: %s\n", requestingUser->nickname);
 
         if (requestingUser != NULL) {                             // Ak užívateľ, ktorý poslal žiadosť existuje
-            printf("odosielam nick\n");
             bzero(message, 256);
             sprintf(message, "%s", requestingUser->nickname);
             *n = write(clientData->socketID, message, strlen(message) + 1);           //  Pošleme odpoveď klientovi.
             // Prijatie odpovede
-            printf("Čakám na odpoveď Y/N\n");
+            printf("Čakám na odpoveď Y/N na žiadosť o zrušenie priateľa %s.\n", message);
             *n = read(clientData->socketID, message, 255);   //  Načítame správu od klienta cez socket do buffra.
 
             if (strcasecmp(message, "Y") == 0) {                    // Ak potvrdil zrušenie
@@ -583,7 +591,7 @@ char message[256];
                 for (int j = 0; j < loggedUser->friendsCount; ++j) {
                     if (loggedUser->friends[j] != NULL) {
                         if (strcmp(loggedUser->friends[j], requestingUser->nickname) == 0) {
-//                        // Výmena priateľa s posledným a zmazanie posledného
+//                          // Výmena priateľa s posledným a zmazanie posledného
                             tempUser = loggedUser->friends[j];
                             loggedUser->friends[j] = loggedUser->friends[loggedUser->friendsCount - 1];
                             loggedUser->friends[loggedUser->friendsCount - 1] = tempUser;
@@ -698,11 +706,11 @@ char buffer[256];
     (*n) = read(clientData->socketID, buffer, 255);
     if (strcasecmp(buffer, "SHOW") == 0) {
         printf("Užívateľ požiadal o zoznam priateľov\n");
-        sprintf(message, "%d", loggedUser->friendsCount);
+        sprintf(message, "%d", loggedUser->friendsCount);   // pošlem počet
         *n = write(clientData->socketID, message, strlen(message)+1);
 
         for (int i = 0; i < loggedUser->friendsCount; ++i) {
-            sprintf(message, "%s", loggedUser->friends[i]);
+            sprintf(message, "%s", loggedUser->friends[i]);     // pošlem nick
             *n = write(clientData->socketID, message, strlen(message)+1);
         }
         bzero(message, 256);
@@ -717,7 +725,7 @@ char buffer[256];
     pthread_mutex_lock(threadData->mutexRegister);
     User *requested = findUser(fromNick, clientData->registeredUsers);
     pthread_mutex_unlock(threadData->mutexRegister);
-    printf("Prijatá správa od užívateľa %s pre užívateľa %s\n", loggedUser->nickname, fromNick);
+    printf("Prijatá správa od užívateľa %s pre užívateľa %s.\n", loggedUser->nickname, fromNick);
     printf("Adresát: %s, | Text správy: %s\n", fromNick, messageText);
 
     if (requested != NULL) {
