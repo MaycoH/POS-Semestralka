@@ -19,7 +19,7 @@ void *clientRoutine(void *data) {
     User *loggedUser;
     ThreadData *thrData = data;
     ClientData *client = thrData->clientData;
-    printf("Vytvorené vlákna: %d; id vlákna: %lu\n", threadsCount, thrData->threadID);
+    printf("Vytvorené vlákna: %d\n", threadsCount);
     while (!ended) {
         // AK všetko prebehlo bezproblémovo, môžeme začať s klientom komunikovať
         n = 0;
@@ -63,7 +63,7 @@ void *clientRoutine(void *data) {
                     printf("Klient ukončil spojenie.\n");
                     break;
                 default: {  // Zvolená neplatná možnosť
-                    sprintf(message, "Zvolená neplatná možnosť: %s\n");
+                    sprintf(message, "Zvolená neplatná možnosť: %s\n", option);
                     printf("%s", message);
                     strcat(message, options);
                     n = write(client->socketID, message, strlen(message) + 1);
@@ -91,7 +91,6 @@ void *clientRoutine(void *data) {
     connectedClients[thrData->clientData->clientID] = connectedClients[connectedClientsCount];
     connectedClients[connectedClientsCount] = NULL;
     pthread_mutex_unlock(&mutexClients);
-//    free(thrData->clientData);
 
     pthread_mutex_lock(&mutexThreads);
     unsigned long threadID = thrData->threadID;       // Pre výpis uvoľňovaného ID vlákna
