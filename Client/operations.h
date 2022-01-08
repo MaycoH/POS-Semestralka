@@ -11,19 +11,19 @@
 #include <stdbool.h>
 #include "../maxLimits.h"
 
-typedef struct friendsList {
+typedef struct friendList {
     char **friends;
     int friendsCount;
 } FriendList;
 
 bool registerUser(int sockfd);
-bool loginUser(int sockfd);
+bool loginUser(int sockfd, FriendList *friendsList);
 bool logoutUser(int sockfd);
 bool addFriend(int sockfd, FriendList *friendslist);
 bool deleteFriend(int sockfd, FriendList *friendsList);
 bool deleteAccount(int sockfd);
 bool sendMessage(int sockfd, FriendList *friendsList);
 
-bool showRequests(int sockfd);
+bool showRequests(int sockfd, FriendList *friendslist);
 
 #endif //SEMESTRALKA_OPERATIONS_H

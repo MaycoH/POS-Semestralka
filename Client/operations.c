@@ -7,7 +7,7 @@
 
 char loggedUser[MAX_NICKNAME_LENGTH];
 
-bool showRequests(int sockfd) {
+bool showRequests(int sockfd, FriendList *friendslist) {
     // Zobrazenie žiadostí
     char message[256];
     int n;
@@ -32,16 +32,34 @@ bool showRequests(int sockfd) {
                 perror("Error reading from socket");
                 return false;
             }
-            printf("%s.\n", message);  // dostanem nick zo servera
+            printf("Máte žiadosť o priateľstvo od užívateľa %s.\n", message);
 
             printf("Chcete potvrdiť túto žiadosť? [Y/N]: ");
-            char response[1];
-            scanf("%*c%c", response);
-            n = write(sockfd, response, strlen(response)+1);
+            char response;
+            char option[2];
+            scanf("%*c%c", &response);
+            sprintf(option, "%c", response);
+            n = write(sockfd, option, strlen(option)+1);
             if (n < 0)
             {
                 perror("Error writing to socket");
                 return false;
+            }
+            if (strcasecmp(option, "Y") == 0) {
+                // Prijatie potvrdenia o pridaní
+                char requestingUser[MAX_NICKNAME_LENGTH];
+                strcpy(requestingUser, message);
+                bzero(message, 256);
+                n = read(sockfd, message, 255);
+                if (n < 0)
+                {
+                    perror("Error reading from socket");
+                    return false;
+                }
+                printf("%s\n", message);        // Malo by vypísať stav.
+                friendslist->friends[friendslist->friendsCount] = malloc(sizeof(char) * MAX_NICKNAME_LENGTH);
+                strcpy(friendslist->friends[friendslist->friendsCount], requestingUser);
+                friendslist->friendsCount++;
             }
         }
 
@@ -51,7 +69,7 @@ bool showRequests(int sockfd) {
     return true;
 }
 
-bool loginUser(int sockfd) {
+bool loginUser(int sockfd, FriendList *friendsList) {
     char login[MAX_NICKNAME_LENGTH];
     char password[MAX_PASSWORD_LENGTH];
     printf("Zadajte prihlasovacie meno (max. %d znakov): ", MAX_NICKNAME_LENGTH);
@@ -81,7 +99,7 @@ bool loginUser(int sockfd) {
     if (strcmp(message, "Login prebehol úspešne\n") == 0) {
         strcpy(loggedUser, login);
         printf(GREEN"Prihlásenie úspešné"RESET", prihlásený užívateľ: %s.\n", login);
-        return showRequests(sockfd);
+        return showRequests(sockfd, friendsList);
     } else {
         printf(RED"Prihlásenie neúspešné - nesprávne meno alebo heslo.\n"RESET);
         return false;
@@ -143,7 +161,6 @@ bool addFriend(int sockfd, FriendList *friendslist) {
     printf("Posielam žiadosť o nové žiadosti\n");
     bzero(message, 256);
     n = read(sockfd, message, 255);
-    printf("*** Prijaté: %s\n", message);
     if (n < 0)
     {
         perror("Error reading from socket");
@@ -154,21 +171,20 @@ bool addFriend(int sockfd, FriendList *friendslist) {
     // Spracovanie žiadostí:
     for (int i = 0; i < requestsCount; ++i) {
         bzero(message, 256);
-        printf("Čakám na meno\n");
         n = read(sockfd, message, 255);
         if (n < 0)
         {
             perror("Error reading from socket");
             return false;
         }
-        char *requestingUser = message;
+        char requestingUser[MAX_NICKNAME_LENGTH];
+        strcpy(requestingUser, message);
         printf("Užívateľ %s Vás žiada o priateľstvo, chcete ho pridať? [Y/N]: ", message);
         // Potvrdenie žiadosti
         char temp;
         char option[256];
         scanf("%*c%c", &temp);
         sprintf(option,"%c", temp);
-        printf("Sent: %s\n", option);
         n = write(sockfd, option, strlen(option)+1);
         if (n < 0)
         {
@@ -176,7 +192,6 @@ bool addFriend(int sockfd, FriendList *friendslist) {
             return false;
         }
         if (strcasecmp(option, "Y") == 0) {
-            friendslist->friendsCount++;
             // Prijatie potvrdenia o pridaní
             bzero(message, 256);
             n = read(sockfd, message, 255);
@@ -186,27 +201,17 @@ bool addFriend(int sockfd, FriendList *friendslist) {
                 return false;
             }
             printf("%s\n", message);
-            printf("Počet priateľov po inc: %d\n", friendslist->friendsCount);
-            for (int j = 0; j < friendslist->friendsCount; ++j) {
-                printf("Iterácia cyklu: %d/%d\n",i, friendslist->friendsCount);
-                if (friendslist->friends[j] == NULL) {
-                    printf("Našiel som pľac\n");
-                    friendslist->friends[j] = malloc(sizeof(char) * MAX_NICKNAME_LENGTH);
-                    strcpy(friendslist->friends[j], requestingUser);
-                    break;
-                }
-            }
-            printf("Som po cykle pridania\n");
+            friendslist->friends[friendslist->friendsCount] = malloc(sizeof(char) * MAX_NICKNAME_LENGTH);
+            strcpy(friendslist->friends[friendslist->friendsCount], requestingUser);
+            friendslist->friendsCount++;
         }
     }
-    printf("Cakam na read\n");
     n = read(sockfd, message, 255);
     if (n < 0)
     {
         perror("Error reading from socket");
         return false;
     }
-    printf("*** Prijatá správa: %s\n", message);
     int registeredCount = strtol(message, NULL, 10);
     printf("Počet registrovaných užívateľov: %d\n", registeredCount);
     // Výpis registrovaných užívateľov
@@ -276,18 +281,18 @@ bool logoutUser(int sockfd) {
     }
 }
 
-// FIXME: Nefunguje potrvrdenie
 bool deleteAccount(int sockfd) {
     char message[256];
-//    printf("Naozaj chcete zrušiť svoj účet? [Y/N]: ");
-//    char option[1];
-//    bzero(option, 1);
+    printf("Naozaj chcete zrušiť svoj účet? [Y/N]: ");
+    char option[1];
+    bzero(option, 1);
 //        fflush(stdin);
-//    scanf("%*c%c", option);
+    while ((getchar()) != '\n');
+    scanf("%c", option);
 ////    fgets(option, 2, stdin);
 ////    fflush(stdin);
-//    printf(YELLOW"Option: %s\n"RESET, option);
-//    if (strcasecmp(option, "Y") == 0) {
+    printf(YELLOW"Option: %s\n"RESET, option);
+    if (strcasecmp(option, "Y") == 0) {
         printf("Odosielam žiadosť o zrušenie na server...\n");
         sprintf(message, "D");
         int n = write(sockfd, message, strlen(message) + 1);
@@ -308,8 +313,8 @@ bool deleteAccount(int sockfd) {
             printf(RED"%s"RESET, message);
             return false;
         }
-//    }
-//    return false;
+    }
+    return false;
 }
 
 bool sendMessage(int sockfd, FriendList *friendsList) {
@@ -324,7 +329,6 @@ bool sendMessage(int sockfd, FriendList *friendsList) {
     // Prijatie počtu správ
     bzero(message, 256);
     n = read(sockfd, message, 255);
-    printf("*** Prijatá správa: %s\n", message);
     strtok(message, ":");
     char *count = strtok(NULL, ":");
     int messagesCount = strtol(count, NULL, 10);
@@ -345,7 +349,7 @@ bool sendMessage(int sockfd, FriendList *friendsList) {
     }
     // Odoslanie novej správy
     bzero(message, 256);
-    printf("Zadajte nick priateľa, ktorému chcete poslať správu alebo zadajte SHOW pre vyžiadanie zoznamu priateľov: ");
+    printf("Zadajte nick priateľa, ktorému chcete poslať správu\n alebo zadajte SHOW pre vyžiadanie zoznamu priateľov: ");
     scanf("%s", receiver);
     printf("\n");
     if (strcasecmp(receiver, "SHOW") == 0) {
@@ -369,8 +373,11 @@ bool sendMessage(int sockfd, FriendList *friendsList) {
     }
     // Samotné poslanie správy
     printf("Zadajte text správy (max. %d znakov): ", MAX_MESSAGE_LENGTH);
-    scanf("%s", messageText);
+    while ((getchar()) != '\n');
+    scanf("%[^\n]s", messageText);  // trim na NewLine namiesto whitespace
+
     sprintf(message, "%s|%s", receiver, messageText);
+    printf("\nOdoslaný message: %s\n", message);
 
     n = write(sockfd, message, strlen(message)+1);
 
@@ -420,14 +427,12 @@ bool deleteFriend(int sockfd, FriendList *friendsList) {
 
             for (int j = 0; j < friendsList->friendsCount; ++j) {
                 if (strcmp(friendsList->friends[i], message) == 0) {
-                    printf("Našiel som zhodu!\n");
                     char *tempUser = friendsList->friends[i];
                     friendsList->friends[i] = friendsList->friends[friendsList->friendsCount - 1];
                     friendsList->friends[friendsList->friendsCount - 1] = tempUser;
                     friendsList->friends[friendsList->friendsCount - 1] = NULL;
                     free(friendsList->friends[friendsList->friendsCount - 1]);
                     friendsList->friendsCount--;
-                    printf("Úspešne odstránený lokálne\n");
                     break;
                 }
             }
