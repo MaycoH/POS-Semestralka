@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
 
     if (argc < 3)                   // Skontrolujeme či máme dostatok argumentov.
     {
-        fprintf(stderr,BOLD RED"Usage: %s hostname port\n"RESET, argv[0]);
+        fprintf(stderr,BOLD RED"Usage: %s hostname port"RESET"\n", argv[0]);
         return 1;
     }
 
@@ -55,22 +55,8 @@ int main(int argc, char *argv[]) {
         perror("Error connecting to socket");
         return 4;
     }
-    printf(GREEN " *** Socket and Bind OK\n" RESET);
+    printf(GREEN " *** Socket and Bind OK"RESET"\n");
 
-
-    // TODO uvodne menu - prihlasenie/registracia/koniec
-    // prihlasenie - do spravy v sockete dat na zaciatok 'P' a delimiter je |
-    // po prihlaseni sa natiahne jeho 'uzivatel' zo servera na clienta
-    // potom sa mu zobrazia ziadosti o priatelstvo(caka sa na vstup Y/N)
-    // po ziadostiach spravy - format [od koho]: sprava
-    // po spravach menu - napis spravu/pridaj priatela/zrus priatela/odhlas->uvod.menu
-    // napis spravu - vypise sa mu zoznam priatelov, zada meno, ak je OK, zada spravu
-    // pridaj priatela - zada nick, ak sa najde na serveri, OK
-    // priatel sa prida aj na serveri(uz nakodene) aj do clientovho 'uzivatela'
-    // zrus priatela - detto
-    // odhlas - posle sa socket s 'O', na serveri sa odhlasi(uz nakodene)
-
-    // TODO
     FriendList *friendslist = malloc(sizeof(FriendList));
     friendslist->friends = malloc(sizeof(char*) * MAX_FRIENDS_COUNT);
     friendslist->friendsCount = 0;
