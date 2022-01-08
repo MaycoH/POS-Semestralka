@@ -475,7 +475,6 @@ bool deleteFriend(int sockfd, FriendList *friendsList) {
         perror("Error writing to socket");
         return false;
     }
-    printf("Úspešne poslané\n");
     // Prijatie odpovede zo servera
     bzero(message, 256);
     n = read(sockfd, message, 255);     // Prijatie nicku
