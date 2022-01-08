@@ -12,9 +12,9 @@
 
 #define MAX_FRIENDS_COUNT 256
 
-typedef struct FriendList FriendsList;
 
 int main(int argc, char *argv[]) {
+    fflush(stdout);
     int sockfd, n;                  // Deskriptor socketu
     struct sockaddr_in serv_addr;
     struct hostent* server;         // Adresa serveru, s ktorým chcem komunikovať
@@ -73,8 +73,7 @@ int main(int argc, char *argv[]) {
     // TODO
     FriendList *friendslist = malloc(sizeof(FriendList));
     friendslist->friends = malloc(sizeof(char*) * MAX_FRIENDS_COUNT);
-
-    int friendsCount = 0;
+    friendslist->friendsCount = 0;
 
     bool ended = false;
     bool logged = false;
@@ -102,7 +101,7 @@ int main(int argc, char *argv[]) {
                     registerUser(sockfd);
                     break;
                 case 2:     // Login
-                    logged = loginUser(sockfd);
+                    logged = loginUser(sockfd, friendslist);
                     break;
                 case 3:     // Koniec programu
                     ended = true;
@@ -162,5 +161,10 @@ int main(int argc, char *argv[]) {
 
 
     close(sockfd);      // Zatvoríme socket
+    for (int i = 0; i < friendslist->friendsCount; ++i) {
+        free(friendslist->friends[i]);
+    }
+    free(friendslist->friends);
+    free(friendslist);
     return 0;
 }
