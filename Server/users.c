@@ -482,7 +482,6 @@ void addFriend(int *n, ThreadData *threadData, ClientData *clientData, User *log
     printf("Všetky nicky poslané\n");
     // Samotné poslenie žiadosti - Výber nicku zo zoznamu
     *n = read(clientData->socketID, buffer, 255);
-    printf("\n%s\n", buffer);
 
     char *requestingUser = strtok(buffer, "|");
     char *requestedUser = strtok(NULL, "|");
