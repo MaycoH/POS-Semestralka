@@ -1,5 +1,4 @@
 #include "users.h"
-#include "../colors.h"
 
 int registeredCount = 0;
 int loggedInCount = 0;
