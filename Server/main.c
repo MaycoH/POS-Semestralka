@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
         perror(RED " *** Error binding socket address" RESET);
         return 2;
     }
-    printf(GREEN " *** Socket and Bind OK\n" RESET);
+    printf(GREEN " *** Socket and Bind OK" RESET "\n");
 
     listen(sockfd, 5);  //  Pripravíme socketID pre príjmanie spojení od klientov. Maximálna dĺžka fronty neobslúžených spojení je 5.
 
@@ -155,7 +155,7 @@ int main(int argc, char *argv[]) {
         pthread_mutex_unlock(&mutexClients);
 
         // Príprava vlákna pre klienta
-        pthread_t thread;
+        pthread_t thread = 0;
 
         pthread_attr_init(&attr);       // inicializujeme atribút
         pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);    // nastavíme atribútu, že bude defaultne detachnutý (defaultne je joinovateľný)
@@ -180,7 +180,7 @@ int main(int argc, char *argv[]) {
         pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);    // nastavíme atribútu, že bude defaultne detachnutý (defaultne je joinovateľný)
 
         // Vytvorenie samotného vlákna
-        printf("Vytváram a obsluhujem vlákno %lu\n", thrData->threadID);
+        printf("Vytváram a obsluhujem vlákno\n");
         pthread_create(&thread, &attr, &clientRoutine, thrData);
     }
 }
