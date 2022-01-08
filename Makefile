@@ -10,7 +10,7 @@ server: Server/main.c
 
 client: Client/main.c
 	@echo "Building ClientApp"
-	gcc -o client Client/main.c Client/operations.c
+	gcc -o ClientApp Client/main.c Client/operations.c
 	@echo "Building ClientApp Done"
 .PHONY : client
 
