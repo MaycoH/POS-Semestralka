@@ -81,7 +81,6 @@ bool loginUser(int sockfd, FriendList *friendsList) {
     char message[256];
     bzero(message,256);
     sprintf(message, "L|%s|%s", login, password);
-    printf("Odoslaný reťazec: %s\n", message);
     int n = write(sockfd, message, strlen(message)+1);
     if (n < 0)
     {
