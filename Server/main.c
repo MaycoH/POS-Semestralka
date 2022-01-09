@@ -19,7 +19,19 @@ ClientData *cliData = NULL;
 pthread_mutex_t mutexThreads;
 pthread_mutex_t mutexClients;
 
+void signalHandler(int signal) {
+    printf("\nVynútené ukončenie programu, ukončujem...");
+    run = false;
+}
+
 int main(int argc, char *argv[]) {
+    // Príprava pre signal interupt SIGINT (Ctrl + C)
+    struct sigaction sigStruct;
+    sigStruct.sa_handler = signalHandler;
+    sigStruct.sa_flags = 0;
+    sigemptyset(&sigStruct.sa_mask);
+    sigaction(SIGINT, &sigStruct, NULL);
+
     // Príprava sieťovo komunikačných vecí
     int sockfd, newsockfd;                      // sockfd = ID socketu, na ktorom počúva; newsockfd = ID klientského socketu
     socklen_t cli_len;                          // Dĺžka socketu klienta
@@ -80,16 +92,17 @@ int main(int argc, char *argv[]) {
         cli_len = sizeof(cli_addr);
         newsockfd = accept(sockfd, (struct sockaddr*)&cli_addr, &cli_len);  //  Počkáme na a príjmeme spojenie od klienta.
         if (newsockfd < 0) {
+            if (run) {
             perror(RED "ERROR on accept\n" RESET);
             return 3;
-        }
-        printf(GREEN" *** Spojenie od klienta úspešne akceptované."RESET"\n" );
+            }
+        } else
+            printf(GREEN" *** Spojenie od klienta úspešne akceptované."RESET"\n" );
         pthread_attr_t attr;            // Vytvoríme atribút
+        pthread_attr_init(&attr);       // inicializujeme atribút
 
         if (!run) {
-
             for (int i = 0; i < registeredCount; ++i) {
-
                 free(registeredUsers[i]->nickname);
                 free(registeredUsers[i]->password);
 
@@ -157,7 +170,6 @@ int main(int argc, char *argv[]) {
         // Príprava vlákna pre klienta
         pthread_t thread = 0;
 
-        pthread_attr_init(&attr);       // inicializujeme atribút
         pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);    // nastavíme atribútu, že bude defaultne detachnutý (defaultne je joinovateľný)
 
         thrData = malloc(sizeof(ThreadData));
