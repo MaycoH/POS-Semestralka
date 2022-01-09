@@ -688,7 +688,6 @@ char buffer[256];
         bzero(message, 256);
         printf("Posielam správu %d z %d\n", i+1, loggedUser->messagesCount);
         sprintf(message, "%s|%s", loggedUser->messages[i]->sentFrom, loggedUser->messages[i]->messageText);
-        printf("%s\n", message);
         *n = write(clientData->socketID, message, strlen(message)+1);           //  Pošleme odpoveď klientovi.
 
 
