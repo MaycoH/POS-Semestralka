@@ -250,8 +250,6 @@ void registerUser(int *n, ThreadData *threadData, ClientData *clientData) {
         registeredCount++;
         pthread_mutex_unlock(threadData->mutexRegister);
         strcpy(message, "Registrácia užívateľa úspešná.\n");
-        printf("Login: %s, password: %s\n", clientData->registeredUsers[registeredCount - 1]->nickname, clientData->registeredUsers[registeredCount-1]->password);
-
     }
     else if (clientData->status == 2) {
         strcpy(message, "Užívateľ s daným menom už je zaregistrovaný!\n");
