@@ -343,6 +343,13 @@ bool sendMessage(int sockfd, FriendList *friendsList) {
         n = read(sockfd, message, 255);
         char *sender = strtok(message, "|");
         char *text = strtok(NULL, "|");
+
+        // Dešifrovanie spravy Cezarovou sifrou
+        for (int i = 0; text[i] != '\0'; ++i) {
+            text[i] -= 1;
+        }
+        // Koniec dešifrovania
+
         printf("Odosielateľ: %s\nText správy: %s\n", sender, text);
         sleep(5);
         bzero(message, 256);
@@ -380,8 +387,13 @@ bool sendMessage(int sockfd, FriendList *friendsList) {
     while ((getchar()) != '\n');
     scanf("%[^\n]s", messageText);  // trim na NewLine namiesto whitespace
 
+    // Zasifrovanie spravy Cezarovou sifrou
+    for (int i = 0; messageText[i] != '\0'; ++i) {
+        messageText[i] += 1;
+    }
+    // Koniec sifrovania
+
     sprintf(message, "%s|%s", receiver, messageText);
-    printf("\nOdoslaný message: %s\n", message);
 
     n = write(sockfd, message, strlen(message)+1);
 
